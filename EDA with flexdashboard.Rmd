@@ -20,16 +20,21 @@ Column {data-width=650}
 ### **Correlation Map between attributes**
 
 ```{r}
-plot_correlation(adult, type = 'continuous','Review.Date')
+corr = plot_correlation(adult, type = 'continuous','Review.Date')
+ggplotly(corr)
 ```
 
 Column {data-width=350}
 -----------------------------------------------------------------------
 
-### Chart B
+### **Age** 
 
 ```{r}
-
+age_box <- ggplot(AdultData, aes(x = label, y = age, fill = label)) +
+   geom_boxplot(alpha = 0.6) +
+   labs(x = "Income", y = "Age", title = "People who are older earn more",
+        subtitle = "Box and whisker plot")
+ggplotly(age_box)
 ```
 
 ### Chart C

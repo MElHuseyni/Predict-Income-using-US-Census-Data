@@ -11,15 +11,16 @@ library(flexdashboard)
 library(ggplot2)
 library(plotly)
 library(plyr)
+library(DataExplorer)
 ```
 
 Column {data-width=650}
 -----------------------------------------------------------------------
 
-### Chart A
+### **Correlation Map between attributes**
 
 ```{r}
-
+plot_correlation(adult, type = 'continuous','Review.Date')
 ```
 
 Column {data-width=350}

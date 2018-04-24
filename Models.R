@@ -5,6 +5,8 @@ library(rpart.plot)
 library(randomForest)
 library(caret)
 library(e1071)
+library(ROCR)
+library(DataExplorer)
 
 setcol <- c("age","workclass","fnlwgt","education","education-num","marital-status",
             "occupation","relationship","race","sex","capital-gain","capital-loss",
@@ -16,20 +18,31 @@ head(adult)
 adult <- dplyr::select(adult, -fnlwgt, -education.num,
                        -capital.gain, -capital.loss)
 
-adult_omitted =  adult %>% na.omit()
-colSums(sapply(adult_omitted,is.na))
+adult =  adult %>% na.omit()
+colSums(sapply(adult,is.na))
+plot_str(adult)
+plot_missing(adult)
+y <- as.integer(adult$target)
 
+##############################################################
+#Split Data into train and test
+spl<-sample.split(adult$target, SplitRatio=0.8)
+train<-subset(adult,spl== TRUE)
+test <-subset(adult, spl== FALSE)
 
-spl<-sample.split(adult_omitted$target, SplitRatio=0.7)
-train<-subset(adult_omitted,spl== TRUE)
-test <-subset(adult_omitted, spl== FALSE)
-
-
+#############################################################################3
 #All of the variables are used to build a logistic regression model to predict the variable over50k.
-censusglm<-glm(target ~ ., data=train, family=binomial)
+lg <- glm(target ~.,family = binomial(link='logit'),data=train)
+Prediction2 <- predict(lg,newdata=test[-15],type = 'response')
+Pred <- ifelse(Prediction2>0.5,1,0)
+table(actual= test$target, predicted= Pred>0.5)
 
-
-
+lgAcu <- (4190+823)/6033
+lgAcu
+ROCRpred<- prediction(Prediction2, test$target)
+perf<- performance(ROCRpred, "tpr", "fpr")
+plot(perf)
+################################################################
 census_tree<-rpart(target ~ ., data=train, method="class")
 prp(census_tree)
 rpart.plot(census_tree, box.col=c("red", "blue"))
@@ -57,7 +70,7 @@ plot(performance2, main = "rpart tree")
 set.seed(32423)
 rfFit<- randomForest(target~.,data= train)
 print(rfFit)
-rnf_pred <- predict(rfFit,newdata = test[,-15],type = 'class')
+rnf_pred <- predict(rfFit,newdata = test[,-11],type = 'class')
 rfAcu <-confusionMatrix(rnf_pred,test$target)$overall[1]
 rfAcu
 ####################################################
@@ -67,3 +80,21 @@ rfAcu
 svm.model<- svm(target~., data = train,kernel = "radial", cost = 1, gamma = 0.1)
 svm.predict <- predict(svm.model, test)
 confusionMatrix(test$target, svm.predict)
+
+
+##################################
+
+library(xgboost)
+param0 <- list(
+  "objective"  = "binary:logistic",
+  "eval_metric" = "auc",
+  "eta" = 0.01 
+  ,"subsample" = 1
+  , "colsample_bytree" = 1
+  , "min_child_weight" = 1
+  , "max_depth" = 9
+) 
+
+xgtrain <- xgb.DMatrix(as.matrix(adult_omitted), label = y)
+watchlist <- list('train' = xgtrain)
+cv <- xgb.cv(params = param0,data = xgtrain,nrounds = 101,nfold = 3,print.every.n = 20)
